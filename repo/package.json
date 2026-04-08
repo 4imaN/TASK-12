@@ -1,0 +1,15 @@
+{
+  "name": "railops",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "bootstrap": "./scripts/bootstrap.sh",
+    "test": "./run_tests.sh",
+    "test:unit": "cd unit_tests && npx jest --forceExit",
+    "test:api": "cd API_tests && npx jest --forceExit --runInBand",
+    "test:frontend": "cd frontend && npx vitest run"
+  },
+  "dependencies": {
+    "playwright": "^1.59.1"
+  }
+}

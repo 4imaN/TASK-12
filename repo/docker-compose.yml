@@ -1,0 +1,80 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: railops-mysql
+    restart: unless-stopped
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./backend/database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - railops-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: railops-backend
+    restart: unless-stopped
+    ports:
+      - "3443:3443"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      TLS_CERT_PATH: ${TLS_CERT_PATH}
+      TLS_KEY_PATH: ${TLS_KEY_PATH}
+      BACKUP_PATH: ${BACKUP_PATH}
+      PHONE_ENCRYPTION_KEY: ${PHONE_ENCRYPTION_KEY}
+      NODE_ENV: production
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-10}
+    volumes:
+      - ./backend/certs:/app/certs
+      - backups:/backups
+    networks:
+      - railops-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: railops-frontend
+    restart: unless-stopped
+    ports:
+      - "8443:8443"
+    depends_on:
+      - backend
+    environment:
+      API_PROXY_TARGET: https://backend:3443
+      TLS_CERT_PATH: /app/certs/server.crt
+      TLS_KEY_PATH: /app/certs/server.key
+    volumes:
+      - ./backend/certs:/app/certs:ro
+    networks:
+      - railops-net
+
+volumes:
+  mysql_data:
+    driver: local
+  backups:
+    driver: local
+
+networks:
+  railops-net:
+    driver: bridge

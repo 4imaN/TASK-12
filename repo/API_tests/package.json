@@ -1,0 +1,10 @@
+{
+  "name": "railops-api-tests",
+  "private": true,
+  "scripts": {
+    "test": "jest --testTimeout=30000 --runInBand"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

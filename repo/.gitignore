@@ -1,0 +1,9 @@
+backend/certs/*
+!backend/certs/.gitkeep
+*.key
+*.crt
+*.pem
+node_modules/
+dist/
+.env
+.Ds_Store
