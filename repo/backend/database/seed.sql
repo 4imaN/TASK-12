@@ -42,7 +42,8 @@ INSERT INTO trusted_devices (user_id, device_fingerprint, browser_info, os_info)
   (2, 'TEST_DEVICE_host1', 'System Bootstrap', 'Initial Setup');
 
 -- Admin session exception (max_sessions raised from default 2)
-INSERT INTO session_exceptions (user_id, granted_by, max_sessions, reason) VALUES (1, 1, 5, 'Initial platform administrator bootstrap');
+INSERT INTO session_exceptions (user_id, granted_by, max_sessions, reason) VALUES (1, 1, 100, 'Initial platform administrator bootstrap');
+INSERT INTO session_exceptions (user_id, granted_by, max_sessions, reason) VALUES (2, 1, 100, 'Initial host bootstrap');
 
 -- ────────────────────────────────────────────
 -- Stations

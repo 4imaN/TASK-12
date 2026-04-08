@@ -165,7 +165,7 @@ async function login({ username, password, deviceFingerprint, ipAddress }) {
   const exception = await db('session_exceptions')
     .where('user_id', user.id)
     .where(function() { this.whereNull('expires_at').orWhere('expires_at', '>', new Date()); })
-    .orderBy('created_at', 'desc')
+    .orderBy('max_sessions', 'desc')
     .first();
   if (exception) maxSessions = exception.max_sessions;
 
@@ -233,7 +233,7 @@ async function verifyDevice(userId, code, deviceFingerprint) {
       const exception = await db('session_exceptions')
         .where('user_id', userId)
         .where(function() { this.whereNull('expires_at').orWhere('expires_at', '>', new Date()); })
-        .orderBy('created_at', 'desc')
+        .orderBy('max_sessions', 'desc')
         .first();
       if (exception) maxSessions = exception.max_sessions;
 

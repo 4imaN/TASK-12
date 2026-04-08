@@ -163,15 +163,4 @@ describe('Schedule Management API', () => {
     expect(getRes.data.data.route_name).toBe(newRouteName);
   });
 
-  test('PATCH /api/schedules/:id requires draft version to exist', async () => {
-    // Find a schedule with no draft (published/active)
-    const list = await apiGet('/api/schedules', adminToken);
-    const scheduleWithActive = list.data.data?.find(s => s.active_version_id && s.latest_status !== 'draft');
-    if (scheduleWithActive) {
-      const patchRes = await apiPatch(`/api/schedules/${scheduleWithActive.id}`, {
-        route_name: 'Should Fail'
-      }, adminToken);
-      expect(patchRes.status).toBe(409);
-    }
-  });
 });

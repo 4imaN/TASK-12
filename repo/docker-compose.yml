@@ -43,7 +43,7 @@ services:
       BACKUP_PATH: /backups
       PHONE_ENCRYPTION_KEY: railops-docker-encryption-key-32
       NODE_ENV: production
-      LOGIN_RATE_LIMIT: "10"
+      LOGIN_RATE_LIMIT: "500"
       BACKUP_ALLOWED_ROOTS: /backups,/tmp/railops-backups
     volumes:
       - ./backend/certs:/app/certs

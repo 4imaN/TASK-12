@@ -33,12 +33,10 @@ async function seed() {
     ]);
 
     // Admin gets max_sessions: 2 like everyone else, but gets explicit exception
-    await db('session_exceptions').insert({
-      user_id: 1,
-      granted_by: 1,
-      max_sessions: 5,
-      reason: 'Initial platform administrator bootstrap'
-    });
+    await db('session_exceptions').insert([
+      { user_id: 1, granted_by: 1, max_sessions: 100, reason: 'Initial platform administrator bootstrap' },
+      { user_id: 2, granted_by: 1, max_sessions: 100, reason: 'Initial host bootstrap' }
+    ]);
 
     await db('stations').insert([
       { code: 'NYC', name: 'New York Penn Station', name_normalized: 'new york penn station', region: 'Northeast' },

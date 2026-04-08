@@ -46,6 +46,12 @@ req.on('timeout', () => { req.destroy(); console.log('timeout'); });
 
 if [ "$HEALTH_STATUS" = "ok" ]; then
   echo "   Backend is healthy."
+
+  # Clear auth state before API tests to prevent cross-run lockout interference
+  echo "   Clearing auth state for clean test run..."
+  docker exec railops-mysql mysql -uroot -prailops_secret railops \
+    -e "DELETE FROM lockouts; DELETE FROM login_attempts; DELETE FROM sessions;" 2>/dev/null || true
+
   cd "$REPO_DIR/API_tests"
   if [ ! -d "node_modules" ]; then
     npm install 2>/dev/null
