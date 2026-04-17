@@ -60,30 +60,50 @@ describe('Authorization Controls', () => {
     expect(res.status).toBe(401);
   });
 
-  // Platform Ops access
-  test('Platform Ops can access users', async () => {
+  // Platform Ops access — status + envelope + content assertions
+  test('Platform Ops can access users with correct envelope', async () => {
     const res = await apiGet('/api/users', adminToken);
     expect(res.status).toBe(200);
+    expect(res.data.success).toBe(true);
+    const users = res.data.data?.results || res.data.data || [];
+    expect(Array.isArray(users)).toBe(true);
+    expect(users.length).toBeGreaterThan(0);
+    expect(users[0].username).toBeDefined();
+    expect(users[0].role).toBeDefined();
   });
 
-  test('Platform Ops can access approvals', async () => {
+  test('Platform Ops can access approvals with correct envelope', async () => {
     const res = await apiGet('/api/approvals', adminToken);
     expect(res.status).toBe(200);
+    expect(res.data.success).toBe(true);
+    expect(Array.isArray(res.data.data)).toBe(true);
   });
 
-  test('Platform Ops can access audit logs', async () => {
+  test('Platform Ops can access audit logs with correct envelope', async () => {
     const res = await apiGet('/api/audit/logs', adminToken);
     expect(res.status).toBe(200);
+    expect(res.data.success).toBe(true);
   });
 
-  test('Platform Ops can access backups', async () => {
+  test('Platform Ops can access backups with correct envelope', async () => {
     const res = await apiGet('/api/backups', adminToken);
     expect(res.status).toBe(200);
+    expect(res.data.success).toBe(true);
+    expect(res.data.data).toBeDefined();
   });
 
-  test('Platform Ops can access data quality', async () => {
+  test('Platform Ops can access data quality with correct envelope', async () => {
     const res = await apiGet('/api/data-quality/issues', adminToken);
     expect(res.status).toBe(200);
+    expect(res.data.success).toBe(true);
+  });
+
+  // Negative: host forbidden response has correct error structure
+  test('Host forbidden response has structured error', async () => {
+    const res = await apiGet('/api/users', hostToken);
+    expect(res.status).toBe(403);
+    expect(res.data.success).toBe(false);
+    expect(res.data.error.code).toBe('FORBIDDEN');
   });
 
   // Host can access their routes

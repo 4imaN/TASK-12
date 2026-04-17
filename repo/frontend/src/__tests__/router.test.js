@@ -1,6 +1,10 @@
+/**
+ * Router configuration tests — validates route definitions without mocks.
+ * Tests the route table structure, auth metadata, and role restrictions.
+ */
 import { describe, it, expect, vi } from 'vitest';
 
-// Mock pinia / auth store so the router module can be imported without errors
+// Minimal auth store mock — only needed for router module loading, not for API calls
 vi.mock('../stores/auth.js', () => ({
   useAuthStore: vi.fn(() => ({
     user: null,
@@ -10,65 +14,66 @@ vi.mock('../stores/auth.js', () => ({
   }))
 }));
 
-// Dynamically import after mocks are in place
 const { default: router } = await import('../router/index.js');
 
-describe('router', () => {
+describe('Route definitions', () => {
   const routes = router.getRoutes();
+  const findRoute = (path) => routes.find(r => r.path === path);
 
-  function findRoute(path) {
-    return routes.find((r) => r.path === path);
-  }
-
-  it('has public routes for search and login', () => {
-    const search = findRoute('/search');
-    expect(search).toBeDefined();
-    expect(search.meta.requiresAuth).toBeFalsy();
-
-    const login = findRoute('/login');
-    expect(login).toBeDefined();
-    expect(login.meta.requiresAuth).toBeFalsy();
+  it('has public /search route without auth requirement', () => {
+    const route = findRoute('/search');
+    expect(route).toBeDefined();
+    expect(route.meta.requiresAuth).toBeFalsy();
   });
 
-  it('has auth-required routes for schedules', () => {
-    const schedules = findRoute('/schedules');
-    expect(schedules).toBeDefined();
-    expect(schedules.meta.requiresAuth).toBe(true);
+  it('has public /login route without auth requirement', () => {
+    const route = findRoute('/login');
+    expect(route).toBeDefined();
+    expect(route.meta.requiresAuth).toBeFalsy();
   });
 
-  it('has auth-required routes for inventory', () => {
-    const inventory = findRoute('/inventory');
-    expect(inventory).toBeDefined();
-    expect(inventory.meta.requiresAuth).toBe(true);
+  it('has auth-required /schedules route for host and platform_ops', () => {
+    const route = findRoute('/schedules');
+    expect(route).toBeDefined();
+    expect(route.meta.requiresAuth).toBe(true);
+    expect(route.meta.roles).toContain('host');
+    expect(route.meta.roles).toContain('platform_ops');
   });
 
-  it('has platform_ops-only routes for approvals and audit', () => {
-    const approvals = findRoute('/approvals');
-    expect(approvals).toBeDefined();
-    expect(approvals.meta.requiresAuth).toBe(true);
-    expect(approvals.meta.roles).toContain('platform_ops');
-
-    const audit = findRoute('/audit');
-    expect(audit).toBeDefined();
-    expect(audit.meta.requiresAuth).toBe(true);
-    expect(audit.meta.roles).toContain('platform_ops');
+  it('has auth-required /inventory route', () => {
+    const route = findRoute('/inventory');
+    expect(route).toBeDefined();
+    expect(route.meta.requiresAuth).toBe(true);
   });
 
-  it('has platform_ops-only routes for admin users and backups', () => {
-    const users = findRoute('/admin/users');
-    expect(users).toBeDefined();
-    expect(users.meta.requiresAuth).toBe(true);
-    expect(users.meta.roles).toContain('platform_ops');
-
-    const backups = findRoute('/backups');
-    expect(backups).toBeDefined();
-    expect(backups.meta.requiresAuth).toBe(true);
-    expect(backups.meta.roles).toContain('platform_ops');
+  it('has platform_ops-only /approvals route', () => {
+    const route = findRoute('/approvals');
+    expect(route).toBeDefined();
+    expect(route.meta.roles).toContain('platform_ops');
+    expect(route.meta.roles).not.toContain('host');
   });
 
-  it('has data-quality route requiring auth', () => {
-    const dq = findRoute('/data-quality');
-    expect(dq).toBeDefined();
-    expect(dq.meta.requiresAuth).toBe(true);
+  it('has platform_ops-only /audit route', () => {
+    const route = findRoute('/audit');
+    expect(route).toBeDefined();
+    expect(route.meta.roles).toContain('platform_ops');
+  });
+
+  it('has platform_ops-only /admin/users route', () => {
+    const route = findRoute('/admin/users');
+    expect(route).toBeDefined();
+    expect(route.meta.roles).toContain('platform_ops');
+  });
+
+  it('has platform_ops-only /backups route', () => {
+    const route = findRoute('/backups');
+    expect(route).toBeDefined();
+    expect(route.meta.requiresAuth).toBe(true);
+  });
+
+  it('has /data-quality route requiring auth', () => {
+    const route = findRoute('/data-quality');
+    expect(route).toBeDefined();
+    expect(route.meta.requiresAuth).toBe(true);
   });
 });

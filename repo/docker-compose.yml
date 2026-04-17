@@ -3,6 +3,7 @@ services:
     image: mysql:8.0
     container_name: railops-mysql
     restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
     ports:
       - "3307:3306"
     environment:
@@ -69,6 +70,23 @@ services:
       - ./backend/certs:/app/certs:ro
     networks:
       - railops-net
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: railops-test-runner
+    depends_on:
+      - backend
+      - frontend
+    environment:
+      API_BASE_URL: https://backend:3443
+      BASE_URL: https://frontend:8443
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    networks:
+      - railops-net
+    profiles:
+      - test
 
 volumes:
   mysql_data:

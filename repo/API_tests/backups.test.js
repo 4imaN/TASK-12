@@ -9,16 +9,24 @@ describe('Backup & Data Quality API', () => {
   });
 
   // Backups
-  test('GET /api/backups returns list', async () => {
+  test('GET /api/backups returns list with correct envelope', async () => {
     const res = await apiGet('/api/backups', adminToken);
     expect(res.status).toBe(200);
     expect(res.data.success).toBe(true);
+    expect(res.data.data).toBeDefined();
+    expect(Array.isArray(res.data.data.results) || Array.isArray(res.data.data)).toBe(true);
   });
 
-  test('GET /api/backups/config returns config', async () => {
+  test('GET /api/backups/config returns config with expected fields', async () => {
     const res = await apiGet('/api/backups/config', adminToken);
     expect(res.status).toBe(200);
     expect(res.data.data).toBeDefined();
+    expect(res.data.data.backup_path).toBeDefined();
+  });
+
+  test('GET /api/backups unauthenticated returns 401', async () => {
+    const res = await apiGet('/api/backups');
+    expect(res.status).toBe(401);
   });
 
   test('GET /api/restore-drills returns list', async () => {

@@ -203,14 +203,14 @@ async function runScheduledBackup(type) {
       } else {
         // ── Full backup via mysqldump ──────────────────────────────
         await new Promise((resolve, reject) => {
-          const args = ['--single-transaction'];
+          const args = ['--single-transaction', '--skip-ssl'];
           args.push('--routines', '--triggers');
 
           args.push('-h', dbHost, '-u', dbUser);
           if (dbPass) args.push(`-p${dbPass}`);
           args.push(dbName);
 
-          const dump = require('child_process').spawn('mysqldump', args);
+          const dump = require('child_process').spawn('mariadb-dump', args);
           const gzip = require('child_process').spawn('gzip');
           const output = fs.createWriteStream(filePath);
 

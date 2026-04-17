@@ -1,94 +1,78 @@
 #!/bin/bash
 set -e
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-API_BASE_URL="${API_BASE_URL:-https://localhost:3443}"
-PASS=0
-FAIL=0
-
 echo "============================================"
-echo "  RailOps Test Suite"
+echo "  RailOps Test Suite (Docker-contained)"
 echo "============================================"
 echo ""
 
-# ---- Unit Tests ----
-echo ">> Running unit tests..."
-cd "$REPO_DIR/unit_tests"
-if [ ! -d "node_modules" ]; then
-  npm install 2>/dev/null
-fi
+# Build test runner image with all dependencies pre-installed
+echo ">> Building test runner..."
+docker compose build test-runner 2>&1 | tail -3
 
-if npx jest --coverage --forceExit 2>&1; then
+# Ensure app services are running
+echo ">> Ensuring app services are up..."
+docker compose up -d mysql backend frontend 2>&1 | tail -3
+echo "   Waiting for backend health..."
+until docker compose exec -T backend sh -c 'wget -qO- --no-check-certificate https://localhost:3443/api/health 2>/dev/null | grep -q ok' 2>/dev/null; do
+  sleep 2
+done
+echo "   Backend is healthy."
+
+# Clear auth state for clean test run
+echo "   Clearing auth state..."
+docker compose exec -T mysql mysql -uroot -prailops_secret railops \
+  -e "DELETE FROM lockouts; DELETE FROM login_attempts; DELETE FROM sessions;" 2>/dev/null || true
+
+PASS=0
+FAIL=0
+
+# ---- Unit Tests ----
+echo ""
+echo ">> Running unit tests..."
+if docker compose run --rm -T test-runner sh -c "cd /repo/unit_tests && npx jest --forceExit --coverage" 2>&1; then
   echo ">> Unit tests: PASSED"
   PASS=$((PASS + 1))
 else
   echo ">> Unit tests: FAILED"
   FAIL=$((FAIL + 1))
 fi
+
+# ---- API Integration Tests ----
 echo ""
-
-# ---- API Tests ----
 echo ">> Running API integration tests..."
-echo "   Backend URL: $API_BASE_URL"
-
-# Preflight health check
-echo "   Checking backend connectivity..."
-HEALTH_STATUS=$(node -e "
-const url = new URL('/api/health', '$API_BASE_URL');
-const mod = url.protocol === 'https:' ? require('https') : require('http');
-const req = mod.get(url.href, { rejectUnauthorized: false, timeout: 5000 }, (res) => {
-  let d = ''; res.on('data', c => d += c);
-  res.on('end', () => { try { const j = JSON.parse(d); console.log(j.data?.status || 'unknown'); } catch { console.log('error'); } });
-});
-req.on('error', () => console.log('unreachable'));
-req.on('timeout', () => { req.destroy(); console.log('timeout'); });
-" 2>/dev/null)
-
-if [ "$HEALTH_STATUS" = "ok" ]; then
-  echo "   Backend is healthy."
-
-  # Clear auth state before API tests to prevent cross-run lockout interference
-  echo "   Clearing auth state for clean test run..."
-  docker exec railops-mysql mysql -uroot -prailops_secret railops \
-    -e "DELETE FROM lockouts; DELETE FROM login_attempts; DELETE FROM sessions;" 2>/dev/null || true
-
-  cd "$REPO_DIR/API_tests"
-  if [ ! -d "node_modules" ]; then
-    npm install 2>/dev/null
-  fi
-
-  if API_BASE_URL="$API_BASE_URL" npx jest --forceExit --runInBand --testTimeout=30000 2>&1; then
-    echo ">> API tests: PASSED"
-    PASS=$((PASS + 1))
-  else
-    echo ">> API tests: FAILED"
-    FAIL=$((FAIL + 1))
-  fi
+if docker compose run --rm -T test-runner sh -c "cd /repo/API_tests && API_BASE_URL=https://backend:3443 NODE_TLS_REJECT_UNAUTHORIZED=0 npx jest --forceExit --runInBand --testTimeout=60000" 2>&1; then
+  echo ">> API tests: PASSED"
+  PASS=$((PASS + 1))
 else
-  echo "   ERROR: Backend not reachable at $API_BASE_URL (status: $HEALTH_STATUS)"
-  echo "   Start the backend first, or set API_BASE_URL to the correct address."
-  echo ">> API tests: SKIPPED"
+  echo ">> API tests: FAILED"
   FAIL=$((FAIL + 1))
 fi
-echo ""
 
 # ---- Frontend Tests ----
+echo ""
 echo ">> Running frontend tests..."
-cd "$REPO_DIR/frontend"
-if [ ! -d "node_modules" ]; then
-  npm install 2>/dev/null
-fi
-
-if npx vitest run 2>&1; then
+if docker compose run --rm -T test-runner sh -c "cd /repo/frontend && npx vitest run" 2>&1; then
   echo ">> Frontend tests: PASSED"
   PASS=$((PASS + 1))
 else
   echo ">> Frontend tests: FAILED"
   FAIL=$((FAIL + 1))
 fi
+
+# ---- E2E Tests ----
 echo ""
+echo ">> Running E2E tests..."
+if docker compose run --rm -T test-runner sh -c "cd /repo/e2e && PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser BASE_URL=https://frontend:8443 NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test --config=playwright.config.js" 2>&1; then
+  echo ">> E2E tests: PASSED"
+  PASS=$((PASS + 1))
+else
+  echo ">> E2E tests: FAILED"
+  FAIL=$((FAIL + 1))
+fi
 
 # ---- Summary ----
+echo ""
 echo "============================================"
 echo "  Results: $PASS passed, $FAIL failed"
 echo "============================================"

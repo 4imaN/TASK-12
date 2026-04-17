@@ -226,7 +226,7 @@ router.post('/backups/run', async (ctx) => {
       } else {
         // ── Full backup via mysqldump ──────────────────────────────
         await new Promise((resolve, reject) => {
-          const args = ['--single-transaction'];
+          const args = ['--single-transaction', '--skip-ssl'];
 
           // Always include routines and triggers for complete backups
           args.push('--routines', '--triggers');
@@ -235,7 +235,7 @@ router.post('/backups/run', async (ctx) => {
           if (dbPass) args.push(`-p${dbPass}`);
           args.push(dbName);
 
-          const dump = require('child_process').spawn('mysqldump', args);
+          const dump = require('child_process').spawn('mariadb-dump', args);
           const gzip = require('child_process').spawn('gzip');
           const output = fs.createWriteStream(filePath);
 
@@ -549,12 +549,12 @@ router.post('/restore-drills', async (ctx) => {
         .filter(sql => sql && sql.trim().length > 0);
 
       if (sqlStatements.length > 0) {
-        const args = ['-h', dbHost, '-u', dbUser];
+        const args = ['--skip-ssl', '-h', dbHost, '-u', dbUser];
         if (dbPass) args.push(`-p${dbPass}`);
         args.push(schema);
 
         await new Promise((resolve, reject) => {
-          const mysql = require('child_process').spawn('mysql', args);
+          const mysql = require('child_process').spawn('mariadb', args);
           let mysqlErr = '';
           mysql.stderr.on('data', (chunk) => { mysqlErr += chunk; });
           mysql.on('close', (code) => {
@@ -577,10 +577,10 @@ router.post('/restore-drills', async (ctx) => {
       // Full backup: gzipped SQL dump — gunzip | mysql
       await new Promise((resolve, reject) => {
         const gunzip = require('child_process').spawn('gunzip', ['-c', b.file_path]);
-        const args = ['-h', dbHost, '-u', dbUser];
+        const args = ['--skip-ssl', '-h', dbHost, '-u', dbUser];
         if (dbPass) args.push(`-p${dbPass}`);
         args.push(schema);
-        const mysql = require('child_process').spawn('mysql', args);
+        const mysql = require('child_process').spawn('mariadb', args);
 
         gunzip.stdout.pipe(mysql.stdin);
         let mysqlErr = '';

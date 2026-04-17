@@ -1,0 +1,22 @@
+FROM node:18-alpine
+
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
+
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+WORKDIR /repo
+
+COPY unit_tests/package.json unit_tests/package.json
+COPY API_tests/package.json API_tests/package.json
+COPY frontend/package.json frontend/package.json
+COPY e2e/package.json e2e/package.json
+
+RUN cd unit_tests && npm install --no-audit --no-fund && cd .. \
+ && cd API_tests && npm install --no-audit --no-fund && cd .. \
+ && cd frontend && npm install --no-audit --no-fund && cd .. \
+ && cd e2e && npm install --no-audit --no-fund
+
+COPY . .
+
+CMD ["sh", "-c", "echo 'Test container ready'"]

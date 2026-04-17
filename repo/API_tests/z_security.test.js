@@ -210,17 +210,7 @@ describe('Unauthenticated and forbidden access', () => {
     expect(res.status).toBe(401);
   });
 
-  test('host cannot access /api/users', async () => {
-    const hostTok = await login('host1', 'host123');
-    const res = await apiGet('/api/users', hostTok);
-    expect(res.status).toBe(403);
-  });
-
-  test('host cannot access /api/approvals', async () => {
-    const hostTok = await login('host1', 'host123');
-    const res = await apiGet('/api/approvals', hostTok);
-    expect(res.status).toBe(403);
-  });
+  // Host authorization tests are in authorization.test.js
 });
 
 describe('Approve/reject endpoint coverage', () => {

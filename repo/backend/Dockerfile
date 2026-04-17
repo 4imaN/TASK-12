@@ -1,7 +1,7 @@
 FROM node:18-alpine
 
-# bcrypt requires build tools; openssl for cert generation
-RUN apk add --no-cache python3 make g++ openssl
+# bcrypt requires build tools; openssl for cert generation; mysql-client for backup/restore
+RUN apk add --no-cache python3 make g++ openssl mysql-client
 
 WORKDIR /app
 
